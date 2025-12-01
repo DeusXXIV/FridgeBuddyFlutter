@@ -1,6 +1,7 @@
 // lib/features/fridge/data/fridge_item.dart
 // Clean FridgeItem model with reminderCount & daysLeft support.
 
+import 'package:flutter/material.dart';
 import 'dart:convert';
 
 class FridgeItem {
@@ -162,5 +163,28 @@ class FridgeItem {
   @override
   String toString() {
     return 'FridgeItem(id: $id, name: $name, qty: $quantity, expiry: ${expiryDate.toIso8601String()}, reminders: $reminderCount)';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Category Icon Extension (UI Helper Only)
+// ---------------------------------------------------------------------------
+
+extension FridgeItemCategoryIcon on FridgeItem {
+  IconData get categoryIcon {
+    switch (category.toLowerCase()) {
+      case 'drink':
+        return Icons.local_drink;
+      case 'meat':
+        return Icons.restaurant;
+      case 'condiment':
+        return Icons.soup_kitchen_outlined;
+      case 'vegetable':
+        return Icons.grass;
+      case 'snack':
+        return Icons.fastfood;
+      default:
+        return Icons.inventory_2_outlined;
+    }
   }
 }

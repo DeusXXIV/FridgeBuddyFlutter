@@ -1,53 +1,72 @@
-// lib/features/fridge/data/fridge_repository.dart
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'fridge_item.dart';
 
-/// Simple in-memory repository for FridgeItem objects.
-/// Uses a ValueNotifier so UI can listen without external state libraries.
+/// Firestore-backed repository.
+/// Keeps a local ValueNotifier in sync with Firestore in real time.
 class FridgeRepository {
-  FridgeRepository._internal();
+  FridgeRepository._internal() {
+    _listenToFirestore();
+  }
 
   static final FridgeRepository _instance = FridgeRepository._internal();
   factory FridgeRepository() => _instance;
 
-  // The internal list (private).
-  final ValueNotifier<List<FridgeItem>> _itemsNotifier = ValueNotifier<List<FridgeItem>>([]);
+  final _db = FirebaseFirestore.instance;
 
-  /// Public read-only ValueListenable for UI to subscribe to.
+  /// Local notifier for UI updates
+  final ValueNotifier<List<FridgeItem>> _itemsNotifier =
+  ValueNotifier<List<FridgeItem>>([]);
+
   ValueListenable<List<FridgeItem>> get itemsListenable => _itemsNotifier;
 
-  /// Current snapshot of items (convenience).
+  /// Convenience snapshot
   List<FridgeItem> get items => List.unmodifiable(_itemsNotifier.value);
 
-  /// Add an item and notify listeners.
-  void addItem(FridgeItem item) {
-    final current = List<FridgeItem>.from(_itemsNotifier.value);
-    current.insert(0, item); // newest on top
-    _itemsNotifier.value = current;
+  /// Firestore collection reference
+  CollectionReference<Map<String, dynamic>> get col =>
+      _db.collection('fridge_items');
+
+  // --------------------------------------------------------
+  // 🔥 REALTIME LISTENER (Firestore → app)
+  // --------------------------------------------------------
+  void _listenToFirestore() {
+    col.orderBy('expiryDate').snapshots().listen((snap) {
+      final list =
+      snap.docs.map((doc) => FridgeItem.fromMap(doc.data())).toList();
+      _itemsNotifier.value = list;
+    });
   }
 
-  /// Update an existing item by id.
-  void updateItem(FridgeItem item) {
-    final current = List<FridgeItem>.from(_itemsNotifier.value);
-    final idx = current.indexWhere((x) => x.id == item.id);
-    if (idx >= 0) {
-      current[idx] = item;
-      _itemsNotifier.value = current;
-    }
+  // --------------------------------------------------------
+  // 🔥 Add to Firestore
+  // --------------------------------------------------------
+  Future<void> addItem(FridgeItem item) async {
+    await col.doc(item.id).set(item.toMap());
   }
 
-  /// Remove item by id.
-  void removeItemById(String id) {
-    final current = List<FridgeItem>.from(_itemsNotifier.value);
-    current.removeWhere((x) => x.id == id);
-    _itemsNotifier.value = current;
+  // --------------------------------------------------------
+  // 🔥 Update Firestore item
+  // --------------------------------------------------------
+  Future<void> updateItem(FridgeItem item) async {
+    await col.doc(item.id).set(item.toMap(), SetOptions(merge: true));
   }
 
-  /// Seed with sample items (optional for local testing).
-  void seedSampleItems() {
+  // --------------------------------------------------------
+  // 🔥 Remove from Firestore
+  // --------------------------------------------------------
+  Future<void> removeItemById(String id) async {
+    await col.doc(id).delete();
+  }
+
+  // --------------------------------------------------------
+  // (Optional) Seed items — now writes to Firestore
+  // --------------------------------------------------------
+  Future<void> seedSampleItems() async {
     if (_itemsNotifier.value.isNotEmpty) return;
     final now = DateTime.now();
-    addItem(FridgeItem(
+
+    await addItem(FridgeItem(
       name: 'Fresh Milk',
       quantity: 2,
       expiryDate: now.add(const Duration(days: 3)),
@@ -56,12 +75,11 @@ class FridgeRepository {
       containerType: 'Carton',
       category: 'Drink',
     ));
-    addItem(FridgeItem(
+
+    await addItem(FridgeItem(
       name: 'Chicken Breast',
       quantity: 1,
       expiryDate: now.add(const Duration(days: 1)),
-      openingDate: null,
-      expiryAfterOpeningDays: null,
       containerType: 'Plastic Wrap',
       category: 'Meat',
     ));

@@ -27,7 +27,6 @@ class SettingsTabWrapper extends StatelessWidget {
   Widget build(BuildContext context) => const _SettingsTab();
 }
 
-
 class MainNavigationShell extends StatefulWidget {
   final Widget child;
   const MainNavigationShell({super.key, required this.child});
@@ -66,7 +65,6 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     );
   }
 }
-
 
 // --------------------------------------------------------
 // HOME TAB
@@ -163,9 +161,7 @@ class _HomeTab extends StatelessWidget {
                       context,
                       icon: Icons.view_module_outlined,
                       label: "Sections",
-                      onTap: () {
-                        /* future: open compartments screen */
-                      },
+                      onTap: () {},
                     ),
                   ],
                 ),
@@ -255,10 +251,8 @@ class _HomeTab extends StatelessWidget {
   }
 }
 
-
-
 // --------------------------------------------------------
-// OTHER TABS (placeholders for now)
+// FRIDGE TAB (clean, uses FridgeRepository)
 // --------------------------------------------------------
 
 class _FridgeTab extends StatelessWidget {
@@ -267,9 +261,7 @@ class _FridgeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     final repo = FridgeRepository();
-    repo.seedSampleItems(); // optional—remove later when Firestore is added
 
     return SafeArea(
       child: Center(
@@ -280,7 +272,6 @@ class _FridgeTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
                 Text(
                   "Your Fridge Items",
                   style: theme.textTheme.headlineSmall?.copyWith(
@@ -296,7 +287,7 @@ class _FridgeTab extends StatelessWidget {
                       if (items.isEmpty) {
                         return Center(
                           child: Text(
-                            'No items yet. Add your first item!',
+                            "No items yet. Add your first item!",
                             style: theme.textTheme.bodyLarge,
                           ),
                         );
@@ -312,7 +303,6 @@ class _FridgeTab extends StatelessWidget {
                     },
                   ),
                 ),
-
               ],
             ),
           ),
@@ -321,30 +311,12 @@ class _FridgeTab extends StatelessWidget {
     );
   }
 
-  // Detailed item card
   Widget _buildItemCard(BuildContext context, FridgeItem item) {
     final theme = Theme.of(context);
-    IconData _categoryIcon(String category) {
-      switch (category.toLowerCase()) {
-        case 'drink':
-          return Icons.local_drink;
-        case 'meat':
-          return Icons.restaurant;
-        case 'condiment':
-          return Icons.soup_kitchen_outlined;
-        case 'vegetable':
-          return Icons.grass;
-        case 'snack':
-          return Icons.fastfood;
-        default:
-          return Icons.inventory_2_outlined;
-      }
-    }
-    // Compute expiry status
     final now = DateTime.now();
     final daysLeft = item.expiryDate.difference(now).inDays;
-    Color statusColor;
 
+    Color statusColor;
     if (daysLeft <= 1) {
       statusColor = Colors.red;
     } else if (daysLeft <= 3) {
@@ -353,22 +325,17 @@ class _FridgeTab extends StatelessWidget {
       statusColor = Colors.green;
     }
 
-    // Opening expiration logic
+    final openDaysLeft = item.daysUntilOpenExpiry();
     String openingInfo = "";
-    if (item.openingDate != null && item.expiryAfterOpeningDays != null) {
-      final openExpiryDate =
-      item.openingDate!.add(Duration(days: item.expiryAfterOpeningDays!));
-      final openDaysLeft = openExpiryDate.difference(now).inDays;
-
-      openingInfo =
-      "After opening: ${openDaysLeft < 0 ? 'Expired' : '$openDaysLeft days left'}";
+    if (openDaysLeft != null) {
+      openingInfo = "After opening: ${openDaysLeft < 0 ? 'Expired' : '$openDaysLeft days left'}";
     }
 
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () {
-        context.go('/item/${Uri.encodeComponent(item.name)}');
-  },
+        context.go('/item/${Uri.encodeComponent(item.id)}');
+      },
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
@@ -377,42 +344,33 @@ class _FridgeTab extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Category Icon
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: theme.colorScheme.primaryContainer.withOpacity(0.6),
                 shape: BoxShape.circle,
               ),
-              child: Icon(_categoryIcon(item.category), size: 26),
+              child: Icon(item.categoryIcon, size: 26),
             ),
-
             const SizedBox(width: 16),
-
-            // Text details
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Item name
                   Text(
                     item.name,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
                   Text(
                     "Qty: ${item.quantity}  •  Container: ${item.containerType}",
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
                   Text(
                     "Expires in $daysLeft days",
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -420,7 +378,6 @@ class _FridgeTab extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   if (openingInfo.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -433,10 +390,7 @@ class _FridgeTab extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(width: 10),
-
-            // Arrow
             const Icon(Icons.chevron_right),
           ],
         ),
@@ -444,6 +398,10 @@ class _FridgeTab extends StatelessWidget {
     );
   }
 }
+
+// --------------------------------------------------------
+// REMINDERS & SETTINGS placeholders
+// --------------------------------------------------------
 
 class _RemindersTab extends StatelessWidget {
   const _RemindersTab();
