@@ -6,6 +6,7 @@ class FridgeRepository {
   static final FridgeRepository _instance = FridgeRepository._internal();
   factory FridgeRepository() => _instance;
 
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final CollectionReference<Map<String, dynamic>> _col =
   FirebaseFirestore.instance.collection('fridgeItems');
 
@@ -19,14 +20,14 @@ class FridgeRepository {
         .toList());
   }
 
-  /// 🔥 Get a single item by Firestore ID
+  /// 🔥 Get a single item by ID
   Future<FridgeItem?> getItemById(String id) async {
     final doc = await _col.doc(id).get();
     if (!doc.exists) return null;
     return FridgeItem.fromMap(doc.data()!);
   }
 
-  /// 🔥 Add item
+  /// 🔥 Add new item
   Future<void> addItem(FridgeItem item) async {
     await _col.doc(item.id).set(item.toMap());
   }
