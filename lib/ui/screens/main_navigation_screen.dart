@@ -281,13 +281,19 @@ class _FridgeTab extends StatelessWidget {
                 const SizedBox(height: 20),
 
                 Expanded(
-                  child: ValueListenableBuilder<List<FridgeItem>>(
-                    valueListenable: repo.itemsListenable,
-                    builder: (context, items, _) {
+                  child: StreamBuilder<List<FridgeItem>>(
+                    stream: repo.watchItems(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+
+                      final items = snapshot.data!;
+
                       if (items.isEmpty) {
                         return Center(
                           child: Text(
-                            "No items yet. Add your first item!",
+                            'No items yet. Add your first item!',
                             style: theme.textTheme.bodyLarge,
                           ),
                         );
