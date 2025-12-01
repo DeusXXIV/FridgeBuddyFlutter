@@ -39,6 +39,9 @@ class FridgeRepository {
 
   /// 🔥 Delete item
   Future<void> deleteItem(String id) async {
-    await _col.doc(id).delete();
+    await FirebaseFirestore.instance
+        .collection('fridgeItems')
+        .doc(id)
+        .delete();
   }
 }
