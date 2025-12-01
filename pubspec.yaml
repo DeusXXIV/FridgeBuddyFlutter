@@ -38,6 +38,7 @@ dependencies:
   flutter_local_notifications: ^19.5.0
   device_info_plus: ^10.1.0
   cloud_firestore: ^6.1.0
+  shared_preferences: ^2.5.3
 
   # Firebase (we will add this later)
   # firebase_core:
