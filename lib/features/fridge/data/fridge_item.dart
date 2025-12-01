@@ -83,6 +83,23 @@ class FridgeItem {
     return d < 0;
   }
 
+  IconData get categoryIcon {
+    switch (category.toLowerCase()) {
+      case 'drink':
+        return Icons.local_drink;
+      case 'meat':
+        return Icons.restaurant;
+      case 'condiment':
+        return Icons.soup_kitchen_outlined;
+      case 'vegetable':
+        return Icons.grass;
+      case 'snack':
+        return Icons.fastfood;
+      default:
+        return Icons.inventory_2_outlined;
+    }
+  }
+
   // -------------------------
   // Serialization
   // -------------------------

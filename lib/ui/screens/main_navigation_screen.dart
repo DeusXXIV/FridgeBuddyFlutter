@@ -282,7 +282,7 @@ class _FridgeTab extends StatelessWidget {
 
                 Expanded(
                   child: StreamBuilder<List<FridgeItem>>(
-                    stream: repo.watchItems(),
+                    stream: repo.watchAllItems(),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
                         return Center(child: CircularProgressIndicator());

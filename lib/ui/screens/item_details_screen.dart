@@ -96,7 +96,7 @@ class ItemDetailsScreen extends StatelessWidget {
     final repo = FridgeRepository();
 
     return FutureBuilder<FridgeItem?>(
-      future: repo.getItemByIdOrName(itemId),
+      future: repo.getItemById(itemId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(

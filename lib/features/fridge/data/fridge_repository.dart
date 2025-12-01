@@ -1,4 +1,5 @@
 // lib/features/fridge/data/fridge_repository.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'fridge_item.dart';
 
@@ -8,80 +9,99 @@ class FridgeRepository {
   static final FridgeRepository _instance = FridgeRepository._internal();
   factory FridgeRepository() => _instance;
 
-  final CollectionReference<Map<String, dynamic>> _collection =
-  FirebaseFirestore.instance.collection('fridgeItems');
+  final _db = FirebaseFirestore.instance;
+  static const String collectionName = "fridgeItems";
 
-  /// Stream all items, real-time.
-  Stream<List<FridgeItem>> watchItems() {
-    return _collection.snapshots().map((snapshot) {
+  /// Stream of all fridge items (real-time updates)
+  Stream<List<FridgeItem>> watchAllItems() {
+    return _db
+        .collection(collectionName)
+        .orderBy("expiryDate")
+        .snapshots()
+        .map((snapshot) {
       return snapshot.docs.map((doc) {
-        final data = Map<String, dynamic>.from(doc.data());
-        data['id'] = doc.id;
+        final data = doc.data();
         return FridgeItem.fromMap(data);
       }).toList();
     });
   }
 
-  /// Get all items once.
-  Future<List<FridgeItem>> getItemsOnce() async {
-    final snapshot = await _collection.get();
-    return snapshot.docs.map((doc) {
-      final data = Map<String, dynamic>.from(doc.data());
-      data['id'] = doc.id;
-      return FridgeItem.fromMap(data);
-    }).toList();
+  /// One-time fetch (if needed)
+  Future<List<FridgeItem>> getAllItemsOnce() async {
+    final snapshot =
+    await _db.collection(collectionName).orderBy("expiryDate").get();
+
+    return snapshot.docs
+        .map((doc) => FridgeItem.fromMap(doc.data()))
+        .toList();
+  }
+  /// Stream that emits the current list and subsequent changes.
+  /// Used by UI StreamBuilder to watch live changes.
+  Stream<List<FridgeItem>> watchAllItems() {
+    return Stream<List<FridgeItem>>.multi((controller) {
+      // push initial value
+      controller.add(_itemsNotifier.value);
+
+      // listener to push updates
+      void listener() => controller.add(_itemsNotifier.value);
+
+      _itemsNotifier.addListener(listener);
+
+      // cleanup when no longer needed
+      controller.onCancel = () {
+        _itemsNotifier.removeListener(listener);
+      };
+    });
   }
 
-  /// Try to fetch an item by document id. Returns null if not found.
+  /// Return a single item by id (or null if not found).
+  /// Keeps method async so callers can await database fetches later.
   Future<FridgeItem?> getItemById(String id) async {
-    final doc = await _collection.doc(id).get();
-    if (!doc.exists) return null;
-    final data = Map<String, dynamic>.from(doc.data()!);
-    data['id'] = doc.id;
-    return FridgeItem.fromMap(data);
+    try {
+      return _itemsNotifier.value.firstWhere((x) => x.id == id);
+    } catch (_) {
+      return null;
+    }
   }
 
-  /// Try to locate an item by id first, if not found try matching on name or encoded name.
-  /// This mirrors the old behavior where routes used either the document id or encoded name.
+  /// Convenience: find by id OR encoded name (for older routes that might pass name).
   Future<FridgeItem?> getItemByIdOrName(String idOrName) async {
-    // 1) Try direct doc id
-    final byId = await getItemById(idOrName);
-    if (byId != null) return byId;
+    // try exact id first
+    final list = _itemsNotifier.value;
+    try {
+      return list.firstWhere((x) => x.id == idOrName);
+    } catch (_) {}
 
-    // 2) Try query by name (exact)
-    final q1 = await _collection.where('name', isEqualTo: idOrName).limit(1).get();
-    if (q1.docs.isNotEmpty) {
-      final data = Map<String, dynamic>.from(q1.docs.first.data());
-      data['id'] = q1.docs.first.id;
-      return FridgeItem.fromMap(data);
+    // try encoded name or plain name
+    try {
+      return list.firstWhere(
+            (x) => Uri.encodeComponent(x.name) == idOrName || x.name == idOrName,
+      );
+    } catch (_) {
+      return null;
     }
-
-    // 3) Try query by decoded (URL-encoded) name; many routes use Uri.encodeComponent(name).
-    final decoded = Uri.decodeComponent(idOrName);
-    final q2 = await _collection.where('name', isEqualTo: decoded).limit(1).get();
-    if (q2.docs.isNotEmpty) {
-      final data = Map<String, dynamic>.from(q2.docs.first.data());
-      data['id'] = q2.docs.first.id;
-      return FridgeItem.fromMap(data);
-    }
-
-    // not found
-    return null;
   }
 
-  /// Add new fridge item.
+  /// Add new item
   Future<void> addItem(FridgeItem item) async {
-    // Use the item.id as the document id so routes and local objects line up.
-    await _collection.doc(item.id).set(item.toMap());
+    await _db.collection(collectionName).doc(item.id).set(item.toMap());
   }
 
-  /// Update existing fridge item.
+  /// Update
   Future<void> updateItem(FridgeItem item) async {
-    await _collection.doc(item.id).update(item.toMap());
+    await _db.collection(collectionName).doc(item.id).update(item.toMap());
   }
 
-  /// Delete an item.
+  /// Delete
   Future<void> removeItem(String id) async {
-    await _collection.doc(id).delete();
+    await _db.collection(collectionName).doc(id).delete();
+  }
+
+  /// Get single item by ID (real-time)
+  Stream<FridgeItem?> watchItem(String id) {
+    return _db.collection(collectionName).doc(id).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return FridgeItem.fromMap(doc.data()!);
+    });
   }
 }
