@@ -94,7 +94,20 @@ class _AddItemScreenState extends State<AddItemScreen> {
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: "Scan Barcode",
-            onPressed: () {},
+            onPressed: () async {
+              // push the scanner so it can be popped with a result
+              final barcode = await context.push<String?>('/scan');
+
+              // If the user returned a barcode, handle it (example: put into name field)
+              if (barcode != null && barcode.isNotEmpty) {
+                // You can decide how to use the barcode. Example: pre-fill name field.
+                _nameCtrl.text = barcode;
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Scanned: $barcode')),
+                );
+              }
+            },
           ),
         ],
       ),

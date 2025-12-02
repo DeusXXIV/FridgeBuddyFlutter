@@ -10,6 +10,8 @@ import '../ui/screens/household_summary_screen.dart';
 import '../ui/screens/main_navigation_screen.dart';
 import '../ui/screens/item_details_screen.dart';
 import '../ui/screens/add_item_screen.dart';
+import '../ui/screens/barcode_scanner_screen.dart';
+
 
 GoRouter createAppRouter(String? householdId) {
   final bool hasHousehold = householdId != null;
@@ -87,9 +89,16 @@ GoRouter createAppRouter(String? householdId) {
             },
           ),
 
+          //add item
           GoRoute(
             path: '/add-item',
             builder: (context, state) => const AddItemScreen(),
+          ),
+
+          //barcode scanner
+          GoRoute(
+            path: '/scan',
+            builder: (context, state) => const BarcodeScannerScreen(),
           ),
         ],
       ),

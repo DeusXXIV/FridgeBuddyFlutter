@@ -7,172 +7,150 @@ import '../../features/fridge/data/fridge_repository.dart';
 class ItemDetailsScreen extends StatelessWidget {
   final String itemId;
 
-  Widget _sectionHeader(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        text.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.1,
-          color: Colors.grey,
-        ),
-      ),
-    );
+  const ItemDetailsScreen({super.key, required this.itemId});
+
+  String _formatDate(DateTime d) {
+    return "${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
   }
 
-  Widget _settingsTile(
-      BuildContext context, {
-        required String title,
-        required String value,
-        Color? valueColor,
-        Widget? trailing,
-      }) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      child: Row(
-        children: [
-          Text(title, style: theme.textTheme.bodyLarge),
-          const Spacer(),
-          Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: valueColor ?? theme.colorScheme.onSurface.withOpacity(0.7),
-            ),
-          ),
-          if (trailing != null) ...[
-            const SizedBox(width: 10),
-            trailing,
-          ],
-        ],
-      ),
-    );
-  }
-
-  Map<String, dynamic> _mockItemMap() {
-    return {
-      "name": "Chicken Breast",
-      "category": "Meat",
-      "container": "Plastic Wrap",
-      "quantity": 1,
-      "expiry": "Jan 22, 2025",
-      "daysLeft": 1,
-      "opened": false,
-      "openingDate": null,
-      "openDays": null,
-      "reminders": 2,
-      "notes": "Use for lunch meal prep.",
-    };
+  Color _expiryColor(BuildContext context, {required int daysLeft}) {
+    if (daysLeft <= 1) return Colors.red;
+    if (daysLeft <= 3) return Colors.orange;
+    return Theme.of(context).colorScheme.primary;
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final repo = FridgeRepository();
+    final theme = Theme.of(context);
 
-    return FutureBuilder<FridgeItem?>(
-      future: repo.getItemById(itemId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Item')),
-            body: Center(child: Text('Error: ${snapshot.error}')),
-          );
-        }
-
-        final item = snapshot.data;
-        if (item == null) {
-          // not found
-          return Scaffold(
-            appBar: AppBar(title: const Text('Item')),
-            body: Center(child: Text('Item not found', style: theme.textTheme.bodyLarge)),
-          );
-        }
-
-        // Build UI with `item`
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(item.name),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: () {
-                  // TODO: Open edit item screen
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () {
-                  // TODO: delete item dialog
-                },
-              ),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Item Details"),
+        actions: [
+          // Edit button (same hierarchy as delete)
+          IconButton(
+            icon: const Icon(Icons.edit),
+            tooltip: "Edit Item",
+            onPressed: () {
+              context.go('/edit-item/$itemId');
+            },
           ),
-          body: SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child: ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    // SECTION: BASIC INFO
-                    _sectionHeader("Basic Information"),
-                    _settingsTile(
-                      context,
-                      title: "Item Name",
-                      value: item.name,
-                    ),
-                    _settingsTile(
-                      context,
-                      title: "Category",
-                      value: item.category,
-                    ),
-                    _settingsTile(
-                      context,
-                      title: "Container Type",
-                      value: item.containerType,
-                    ),
-                    const SizedBox(height: 28),
 
-                    // SECTION: QUANTITY
-                    _sectionHeader("Quantity"),
-                    _settingsTile(
-                      context,
-                      title: "Quantity",
-                      value: item.quantity.toString(),
-                      trailing: const Icon(Icons.add_circle_outline),
+          // Delete button (same hierarchy)
+          IconButton(
+            icon: const Icon(Icons.delete),
+            tooltip: "Delete Item",
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text("Delete Item"),
+                  content:
+                  const Text("Are you sure you want to delete this item?"),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text("Cancel"),
                     ),
-                    const SizedBox(height: 28),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text("Delete"),
+                    ),
+                  ],
+                ),
+              );
 
-                    // SECTION: DATE INFO
-                    _sectionHeader("Dates"),
-                    _settingsTile(
-                      context,
-                      title: "Expiration Date",
-                      value: _formatDate(item.expiryDate),
-                      valueColor: _expiryColor(context, daysLeft: item.daysLeft),
+              if (confirm == true) {
+                try {
+                  await repo.deleteItem(itemId);
+
+                  // go back to fridge tab
+                  if (context.mounted) {
+                    context.go('/fridge');
+                  }
+                } catch (e) {
+                  // show error snackbar but don't crash app
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Delete failed: $e')),
+                    );
+                  }
+                }
+              }
+            },
+          ),
+        ],
+      ),
+      body: FutureBuilder<FridgeItem?>(
+        future: repo.getItemById(itemId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final item = snapshot.data;
+
+          if (item == null) {
+            return const Center(child: Text("Item not found or was deleted."));
+          }
+
+          final daysLeft = item.daysLeft;
+
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // NAME
+                  Text(
+                    item.name,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                    if (item.openingDate != null)
-                      _settingsTile(
-                        context,
-                        title: "Opening Date",
-                        value: _formatDate(item.openingDate!),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // CATEGORY ROW
+                  Row(
+                    children: [
+                      Icon(Icons.category_outlined,
+                          color: theme.colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        item.category,
+                        style: theme.textTheme.titleMedium,
                       ),
-                    if (item.expiryAfterOpeningDays != null)
-                      _settingsTile(
-                        context,
-                        title: "Expires After Opening",
-                        value: "${item.expiryAfterOpeningDays} days",
+                      const SizedBox(width: 12),
+                      Chip(
+                        label: Text(
+                          daysLeft < 0 ? 'Expired' : '$daysLeft days left',
+                          style: TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                        backgroundColor: _expiryColor(context, daysLeft: daysLeft),
                       ),
-                    const SizedBox(height: 28),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // DATA FIELDS
+                  _infoCard("Quantity", "${item.quantity}"),
+                  _infoCard("Container", item.containerType),
+                  _infoCard("Expiration Date", _formatDate(item.expiryDate)),
+
+                  if (item.openingDate != null)
+                    _infoCard("Opening Date", _formatDate(item.openingDate!)),
+
+                  if (item.expiryAfterOpeningDays != null)
+                    _infoCard(
+                        "Expires After Opening", "${item.expiryAfterOpeningDays} days"),
 
                   if (item.notes != null && item.notes!.isNotEmpty)
                     _infoCard("Notes", item.notes!),
@@ -185,7 +163,7 @@ class ItemDetailsScreen extends StatelessWidget {
     );
   }
 
-  // UI Helper
+  // Reusable info card
   Widget _infoCard(String label, String value) {
     return Container(
       width: double.infinity,
@@ -193,21 +171,16 @@ class ItemDetailsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.grey.shade200,
+        color: Colors.grey.shade100,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              )),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 16),
-          ),
+              style:
+              const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 6),
+          Text(value, style: const TextStyle(fontSize: 16)),
         ],
       ),
     );
