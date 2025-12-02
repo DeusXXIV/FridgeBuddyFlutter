@@ -1,3 +1,4 @@
+// lib/ui/screens/item_details_screen.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/fridge/data/fridge_item.dart';
@@ -6,187 +7,175 @@ import '../../features/fridge/data/fridge_repository.dart';
 class ItemDetailsScreen extends StatelessWidget {
   final String itemId;
 
-  const ItemDetailsScreen({super.key, required this.itemId});
+  Widget _sectionHeader(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        text.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.1,
+          color: Colors.grey,
+        ),
+      ),
+    );
+  }
+
+  Widget _settingsTile(
+      BuildContext context, {
+        required String title,
+        required String value,
+        Color? valueColor,
+        Widget? trailing,
+      }) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        children: [
+          Text(title, style: theme.textTheme.bodyLarge),
+          const Spacer(),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: valueColor ?? theme.colorScheme.onSurface.withOpacity(0.7),
+            ),
+          ),
+          if (trailing != null) ...[
+            const SizedBox(width: 10),
+            trailing,
+          ],
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _mockItemMap() {
+    return {
+      "name": "Chicken Breast",
+      "category": "Meat",
+      "container": "Plastic Wrap",
+      "quantity": 1,
+      "expiry": "Jan 22, 2025",
+      "daysLeft": 1,
+      "opened": false,
+      "openingDate": null,
+      "openDays": null,
+      "reminders": 2,
+      "notes": "Use for lunch meal prep.",
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
-    final repo = FridgeRepository();
     final theme = Theme.of(context);
+    final repo = FridgeRepository();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Item Details"),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) async {
-              if (value == 'edit') {
-                context.go('/edit-item/$itemId');
-              }
+    return FutureBuilder<FridgeItem?>(
+      future: repo.getItemById(itemId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-              if (value == 'delete') {
-                final repo = FridgeRepository();
+        if (snapshot.hasError) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Item')),
+            body: Center(child: Text('Error: ${snapshot.error}')),
+          );
+        }
 
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text("Delete Item"),
-                    content: const Text("Are you sure you want to delete this item?"),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text("Cancel")),
-                      FilledButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text("Delete")),
-                    ],
-                  ),
-                );
+        final item = snapshot.data;
+        if (item == null) {
+          // not found
+          return Scaffold(
+            appBar: AppBar(title: const Text('Item')),
+            body: Center(child: Text('Item not found', style: theme.textTheme.bodyLarge)),
+          );
+        }
 
-                if (confirm == true) {
-                  await repo.deleteItem(itemId);
-
-                  if (context.mounted) {
-                    Navigator.pop(context);   // Close details screen
-                    context.go('/fridge');    // Return to fridge tab
-                  }
-                }
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(Icons.edit, size: 20),
-                    SizedBox(width: 10),
-                    Text("Edit Item"),
-                  ],
-                ),
+        // Build UI with `item`
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(item.name),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () {
+                  // TODO: Open edit item screen
+                },
               ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete, size: 20, color: Colors.red),
-                    SizedBox(width: 10),
-                    Text("Delete Item"),
-                  ],
-                ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () {
+                  // TODO: delete item dialog
+                },
               ),
             ],
-          )
-        ],
-      ),
-
-
-      body: FutureBuilder<FridgeItem?>(
-        future: repo.getItemById(itemId),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final item = snapshot.data;
-
-          if (item == null) {
-            return const Center(
-              child: Text("Item not found or was deleted."),
-            );
-          }
-
-          return SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // NAME
-                  Text(
-                    item.name,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+          ),
+          body: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: ListView(
+                  padding: const EdgeInsets.all(24),
+                  children: [
+                    // SECTION: BASIC INFO
+                    _sectionHeader("Basic Information"),
+                    _settingsTile(
+                      context,
+                      title: "Item Name",
+                      value: item.name,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // CATEGORY
-                  Row(
-                    children: [
-                      Icon(Icons.category_outlined,
-                          color: theme.colorScheme.primary),
-                      const SizedBox(width: 8),
-                      Text(item.category,
-                          style: theme.textTheme.titleMedium),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // CARD DETAILS
-                  _infoCard("Quantity", "${item.quantity}"),
-                  _infoCard("Container", item.containerType),
-                  _infoCard(
-                    "Expiration Date",
-                    "${item.expiryDate.year}-${item.expiryDate.month}-${item.expiryDate.day}",
-                  ),
-
-                  if (item.openingDate != null)
-                    _infoCard(
-                      "Opening Date",
-                      "${item.openingDate!.year}-${item.openingDate!.month}-${item.openingDate!.day}",
+                    _settingsTile(
+                      context,
+                      title: "Category",
+                      value: item.category,
                     ),
-
-                  if (item.expiryAfterOpeningDays != null)
-                    _infoCard(
-                      "Expires After Opening",
-                      "${item.expiryAfterOpeningDays} days",
+                    _settingsTile(
+                      context,
+                      title: "Container Type",
+                      value: item.containerType,
                     ),
+                    const SizedBox(height: 28),
+
+                    // SECTION: QUANTITY
+                    _sectionHeader("Quantity"),
+                    _settingsTile(
+                      context,
+                      title: "Quantity",
+                      value: item.quantity.toString(),
+                      trailing: const Icon(Icons.add_circle_outline),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // SECTION: DATE INFO
+                    _sectionHeader("Dates"),
+                    _settingsTile(
+                      context,
+                      title: "Expiration Date",
+                      value: _formatDate(item.expiryDate),
+                      valueColor: _expiryColor(context, daysLeft: item.daysLeft),
+                    ),
+                    if (item.openingDate != null)
+                      _settingsTile(
+                        context,
+                        title: "Opening Date",
+                        value: _formatDate(item.openingDate!),
+                      ),
+                    if (item.expiryAfterOpeningDays != null)
+                      _settingsTile(
+                        context,
+                        title: "Expires After Opening",
+                        value: "${item.expiryAfterOpeningDays} days",
+                      ),
+                    const SizedBox(height: 28),
 
                   if (item.notes != null && item.notes!.isNotEmpty)
                     _infoCard("Notes", item.notes!),
-
-                  const SizedBox(height: 40),
-
-                  // DELETE BUTTON
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      icon: const Icon(Icons.delete),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.red,
-                      ),
-                      label: const Text("Delete Item"),
-                      onPressed: () async {
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: const Text("Confirm Delete"),
-                            content: const Text(
-                                "Are you sure you want to delete this item?"),
-                            actions: [
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.pop(context, false),
-                                child: const Text("Cancel"),
-                              ),
-                              FilledButton(
-                                onPressed: () =>
-                                    Navigator.pop(context, true),
-                                child: const Text("Delete"),
-                              ),
-                            ],
-                          ),
-                        );
-
-                        if (confirm == true) {
-                          await repo.deleteItem(itemId);
-
-                          if (context.mounted) {
-                            context.go('/fridge');
-                          }
-                        }
-                      },
-                    ),
-                  )
                 ],
               ),
             ),
@@ -196,7 +185,7 @@ class ItemDetailsScreen extends StatelessWidget {
     );
   }
 
-  // Card UI helper
+  // UI Helper
   Widget _infoCard(String label, String value) {
     return Container(
       width: double.infinity,
@@ -209,13 +198,16 @@ class ItemDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style:
-            const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
+          Text(label,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              )),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 16)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 16),
+          ),
         ],
       ),
     );
