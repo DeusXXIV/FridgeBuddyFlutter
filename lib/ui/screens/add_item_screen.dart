@@ -74,18 +74,31 @@ class _AddItemScreenState extends State<AddItemScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
+
+      // ---------------------------------------------------------
+      // FIXED APP BAR WITH BACK BUTTON + SCAN BUTTON
+      // ---------------------------------------------------------
       appBar: AppBar(
         title: const Text("Add Item"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              context.go('/fridge');
+            }
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: "Scan Barcode",
-            onPressed: () {
-              // TODO: Implement scanner route
-            },
-          )
+            onPressed: () {},
+          ),
         ],
       ),
+
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -93,6 +106,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
+
                 // ITEM NAME
                 TextField(
                   controller: _nameCtrl,
@@ -188,7 +202,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // NOTES — keep THIS version only
+                // NOTES
                 TextField(
                   maxLines: 3,
                   controller: _notesCtrl,
@@ -199,7 +213,24 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 ),
                 const SizedBox(height: 40),
 
-                // SUBMIT BUTTON
+                // ---------------------------------------------------------
+                // CANCEL BUTTON (NEW)
+                // ---------------------------------------------------------
+                TextButton(
+                  onPressed: () {
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    } else {
+                      context.go('/fridge');
+                    }
+                  },
+                  child: const Text("Cancel"),
+                ),
+                const SizedBox(height: 10),
+
+                // ---------------------------------------------------------
+                // SAVE BUTTON
+                // ---------------------------------------------------------
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
@@ -234,7 +265,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                       child: Text("Save Item"),
                     ),
                   ),
-                )
+                ),
               ],
             ),
           ),
