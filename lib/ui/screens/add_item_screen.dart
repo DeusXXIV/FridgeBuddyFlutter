@@ -76,16 +76,29 @@ class _AddItemScreenState extends State<AddItemScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Add Item"),
+
+        // BACK BUTTON
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              context.go('/fridge');
+            }
+          },
+        ),
+
+        // SCAN BUTTON
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: "Scan Barcode",
-            onPressed: () {
-              // TODO: Implement scanner route
-            },
+            onPressed: () {},
           )
         ],
       ),
+
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -188,7 +201,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // NOTES — keep THIS version only
+                // NOTES
                 TextField(
                   maxLines: 3,
                   controller: _notesCtrl,
@@ -199,6 +212,20 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 ),
                 const SizedBox(height: 40),
 
+                // CANCEL BUTTON
+                TextButton(
+                  onPressed: () {
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    } else {
+                      context.go('/fridge');
+                    }
+                  },
+                  child: const Text("Cancel"),
+                ),
+
+                const SizedBox(height: 10),
+
                 // SUBMIT BUTTON
                 SizedBox(
                   width: double.infinity,
@@ -207,10 +234,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
                         ? () {
                       final item = FridgeItem(
                         name: _nameCtrl.text.trim(),
-                        quantity: int.tryParse(_qtyCtrl.text.trim()) ?? 1,
+                        quantity:
+                        int.tryParse(_qtyCtrl.text.trim()) ?? 1,
                         expiryDate: expiryDate!,
                         openingDate: openingDate,
-                        expiryAfterOpeningDays: expiryAfterOpeningDays,
+                        expiryAfterOpeningDays:
+                        expiryAfterOpeningDays,
                         containerType: _containerCtrl.text.trim().isEmpty
                             ? 'Others'
                             : _containerCtrl.text.trim(),
@@ -234,7 +263,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                       child: Text("Save Item"),
                     ),
                   ),
-                )
+                ),
               ],
             ),
           ),
@@ -263,7 +292,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
             Text(label),
             const Spacer(),
             Text(
-              value == null ? "Select" : "${value.year}-${value.month}-${value.day}",
+              value == null
+                  ? "Select"
+                  : "${value.year}-${value.month}-${value.day}",
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 10),
